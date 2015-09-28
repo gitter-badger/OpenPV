@@ -6,6 +6,7 @@
  */
 
 #include <sstream>
+#include <sys/wait.h>
 #include "HeatMapProbe.hpp"
 #include "parseConfigFile.hpp"
 
