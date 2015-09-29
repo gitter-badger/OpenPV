@@ -263,11 +263,25 @@ end%for
 if (reconHdr.filetype != 4)
    error("heatMapMontage:expectingnonsparse","heatMapMontage expects %s to be a nonsparse layer",reconPvpFile);
 end%if
-reconData = permute(imagePvp{1}.values,[2 1 3]);
+reconData = permute(reconPvp{1}.values,[2 1 3]);
+reconMax = max(reconData(:));
+reconMin = min(reconData(:));
+reconData = (reconData-reconMin)/(reconMax-reconMin+(reconMax==reconMin));
+if size(reconData,3)==1
+   reconData = repmat(reconData,[1 1 3]);
+end%if
 
-xstart = numColumns*size(reconData,1)+5;
+xstart = floor((numColumns+0.5)*(size(reconData,2)+10));
 ystart = floor(((size(montageImage,1)-(size(reconData,1)+64))/2))+5;
 montageImage(ystart+64+(1:size(reconData,1)), xstart+(1:size(reconData,2)), :) = reconData;
+
+file = sprintf('tmp/label%s.png', classes{category});
+makeLabelCommand = sprintf('convert -background black -fill %s -size %dx64 -pointsize 24 -gravity center label:%s %s', "white", size(reconData,2), "reconstruction", file);
+system(makeLabelCommand);
+img = readImageMagickFile(file);
+montageImage(ystart+(1:64),xstart+(1:size(imageData,2)),:) = img;
+delete(file);
+
 
 imwrite(montageImage, montagePath);
 
