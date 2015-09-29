@@ -1,9 +1,11 @@
 function outimage = heatMapMontage(...
     imagePvpFile,...
     resultPvpFile,...
+    reconPvpFile,...
     pv_dir,...
     imageFrameNumber,...
     resultFrameNumber,...
+    reconFrameNumber,...
     confidenceTable,...
     classNameFile,...
     resultsTextFile,...
@@ -102,7 +104,7 @@ numCategories=numel(displayCategoryIndices);
 numColumns = 1:numCategories;
 numRows = ceil(numCategories./numColumns);
 totalSizeY = (size(imageData,1)+64+10)*numRows;
-totalSizeX = (size(imageData,2)+64+10)*numColumns;
+totalSizeX = (size(imageData,2)+10)*(numColumns+2);
 aspectRatio = totalSizeX./totalSizeY;
 ldfgr = abs(log(aspectRatio) - log((1+sqrt(5))/2));
 numColumns = find(ldfgr==min(ldfgr),1);
@@ -152,8 +154,10 @@ maxConfColor = [0 1 0];
 imageBlendCoeff = 0.3;
 % heatmap image will be imageBlendCoeff * imagedata plus (1-imageBlendCoeff) * heatmap data, where
 % the heatmap is converted to color using thresholdConfColor and maxConfColor
-montageImage = zeros((size(imageData,1)+64+10)*numRows, (size(imageData,2)+10)*numColumns,3);
+montageImage = zeros((size(imageData,1)+64+10)*numRows, (size(imageData,2)+10)*(numColumns+2), 3);
+% The +64 in the y-dimension makes room for the category caption
 % The +10 creates a border around each tile in the montage
+% The two extra columns make room for the reconstructed image.
 
 confData = zeros(size(resultData));
 for k=1:resultHdr.nf
@@ -254,6 +258,17 @@ for k=1:numCategories
     montageImage(ystart+(33:64),xstart+(1:size(imageData,2)),:) = valueImage;
     montageImage(ystart+64+(1:size(imageData,1)),xstart+(1:size(imageData,2)),:) = tileImage;
 end%for
+
+[reconPvp,reconHdr] = readpvpfile(reconPvpFile, [], reconFrameNumber, reconFrameNumber);
+if (reconHdr.filetype != 4)
+   error("heatMapMontage:expectingnonsparse","heatMapMontage expects %s to be a nonsparse layer",reconPvpFile);
+end%if
+reconData = permute(imagePvp{1}.values,[2 1 3]);
+
+xstart = numColumns*size(reconData,1)+5;
+ystart = floor(((size(montageImage,1)-(size(reconData,1)+64))/2))+5;
+montageImage(ystart+64+(1:size(reconData,1)), xstart+(1:size(reconData,2)), :) = reconData;
+
 imwrite(montageImage, montagePath);
 
 if nargout>0
